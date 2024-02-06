@@ -17,7 +17,6 @@ namespace Infrastructure.Persistence
         public DbSet<Link> Links { get; set; }
         public DbSet<Visit> Visits { get; set; }
         public DbSet<User> Users { get; set; }
-        public DbSet<Log> Logs { get; set; }
         public DbSet<PasswordResetRequest> PasswordResetRequests { get; set; }
     }
 }
