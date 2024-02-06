@@ -6,10 +6,10 @@ using System.Text;
 using System.Threading.Tasks;
 using Application.DTOs;
 using Application.Interfaces;
-using Domain.DTO;
 using Domain.Entities;
 using Infrastructure;
 using Infrastructure.Interfaces;
+using Infrastructure.Security;
 using Microsoft.Extensions.Logging;
 using Shared;
 
@@ -21,7 +21,7 @@ namespace Application.Services
         private readonly ILinkRepository _linkRepository;
         private readonly IVisitService _visitService;
         private readonly ILogger _logger;
-        public LinkService(ICrudRepository<Link> repository, ILinkRepository linkRepository,IVisitService visitService,ILogger logger)
+        public LinkService(ICrudRepository<Link> repository, ILinkRepository linkRepository, IVisitService visitService, ILogger logger)
         {
             _repository = repository;
             _linkRepository = linkRepository;
@@ -32,13 +32,14 @@ namespace Application.Services
         {
             try
             {
-                if (_linkRepository.NumberOfLinksCreated(link.UserId) < 20)
+                var linksCreated = await _linkRepository.NumberOfLinksCreated(link.UserId);
+                if (linksCreated < 20)
                 {
                     return await _repository.Add(link);
                 }
                 return await OperationResult.CreateAsync(false, HttpStatusCode.NotAcceptable);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occurred while adding a link.");
                 return await OperationResult.CreateAsync(false, HttpStatusCode.InternalServerError);
@@ -48,11 +49,7 @@ namespace Application.Services
         {
             try
             {
-                if (_linkRepository.NumberOfTimesLinkModified(id) < 2)
-                {
-                    return await _repository.Update(id, link);
-                }
-                return await OperationResult.CreateAsync(false, HttpStatusCode.NotAcceptable);
+                return await _repository.Update(id, link);
             }
             catch (Exception ex)
             {
@@ -76,10 +73,11 @@ namespace Application.Services
             try
             {
                 var list = new List<LinkDTO>();
-                var links = _repository.GetAll().Where(i => i.UserId == userId && i.LinkStatus != Link.Status.Deleted).OrderByDescending(i => i.RegDate);
+                var linksAsync = await _repository.GetAll();
+                var links = linksAsync.Where(i => i.UserId == userId && i.LinkStatus != Domain.Enums.LinkStatus.Deleted).OrderByDescending(i => i.RegDate);
                 foreach (var link in links)
                 {
-                    list.Add(new LinkDTO(link.OriginalUrl, link.ShortUrl, link.ExpireDate, link.LinkStatus, _visitService.GetStatistic(link.ShortUrl)));
+                    list.Add(new LinkDTO(link.OriginalUrl.Value, link.ShortUrl, link.ExpireDate, link.LinkStatus));
                 }
                 return list;
             }
@@ -94,7 +92,7 @@ namespace Application.Services
             try
             {
                 var link = await _repository.GetById(id);
-                return await new LinkDTO(link.OriginalUrl, link.ShortUrl, link.ExpireDate, link.LinkStatus, _visitService.GetStatistic(link.ShortUrl));
+                return new LinkDTO(link.OriginalUrl.Value, link.ShortUrl, link.ExpireDate, link.LinkStatus);
             }
             catch (Exception ex)
             {
@@ -110,7 +108,7 @@ namespace Application.Services
                 var list = new List<LinkDTO>();
                 foreach (var link in links)
                 {
-                    list.Add(new LinkDTO(link.OriginalUrl, link.ShortUrl, link.ExpireDate, link.LinkStatus, _visitService.GetStatistic(link.ShortUrl)));
+                    list.Add(new LinkDTO(link.OriginalUrl.Value, link.ShortUrl, link.ExpireDate, link.LinkStatus));
                 }
                 return list;
             }
@@ -124,7 +122,7 @@ namespace Application.Services
         {
             try
             {
-                var link = _repository.GetById(id);
+                var link = await _repository.GetById(id);
                 if (link != null)
                 {
                     var newLink = (new Link()

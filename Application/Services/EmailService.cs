@@ -17,7 +17,7 @@ namespace Application.Services
             _configuration = configuration;
             _logger = logger;
         }
-        public async Task<OperationResult> SendResetCodeEmail(string recipientEmail, string resetCode)
+        public async Task<OperationResult> SendResetCodeEmail(string recipientEmail, int resetCode)
         {
             try
             {
@@ -32,20 +32,21 @@ namespace Application.Services
                     {
                         From = new MailAddress(_configuration["SmtpSettings:Username"]!),
                         Subject = "LinkQ.ir | Password Reset Code",
-                        Body = CreateResetCodeEmailBody(resetCode),
+                        Body = CreateResetCodeEmailBody(resetCode.ToString()),
                         IsBodyHtml = true
                     };
 
                     mailMessage.To.Add(recipientEmail);
 
                     await client.SendMailAsync(mailMessage);
-                    return await OperationResult.CreateAsync(true, HttpStatusCode.Created);
                     _logger.LogInformation($"Email Sent to :{recipientEmail},");
+                    return await OperationResult.CreateAsync(true, HttpStatusCode.Created);
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An Exception Occured while sending an email");
+                return await OperationResult.CreateAsync(false, HttpStatusCode.InternalServerError);
             }
         }
 

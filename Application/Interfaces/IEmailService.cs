@@ -10,6 +10,6 @@ namespace Application.Interfaces
 {
     public interface IEmailService
     {
-        Task<OperationResult> SendResetCodeEmail(string recipientEmail, string resetCode);
+        Task<OperationResult> SendResetCodeEmail(string recipientEmail, int resetCode);
     }
 }

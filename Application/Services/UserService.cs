@@ -1,8 +1,8 @@
 ﻿using Application.Interfaces;
-using Domain.DTO;
 using Domain.Entities;
 using Domain.ValueObjects;
 using Infrastructure.Interfaces;
+using Infrastructure.Security;
 using Microsoft.Extensions.Logging;
 using Shared;
 using System;
@@ -35,7 +35,7 @@ namespace Application.Services
                 return await _repository.Add(new User()
                 {
                     Email = new Email(email),
-                    HashedPassword = PasswordService.HashPasswordWithSalt(password, (_userRepository.GetLastId() + 1).ToString()),
+                    HashedPassword = PasswordService.HashPasswordWithSalt(password, (await _userRepository.GetLastId() + 1).ToString()),
                     RegDate = DateTime.Now,
                 });
             }
@@ -71,7 +71,7 @@ namespace Application.Services
                 var user = _userRepository.GetByEmail(email);
                 if (user is not null)
                 {
-                    var resetCode = new Random().Next(1000, 10000).ToString();
+                    var resetCode = new Random().Next(1000, 10000);
                     var sendEmailResult = await _emailService.SendResetCodeEmail(email, resetCode);
                     if (sendEmailResult == new OperationResult(true, HttpStatusCode.Created))
                         return await _userRepository.ResetPasswordRequest(email, resetCode);
@@ -107,7 +107,7 @@ namespace Application.Services
         {
             try
             {
-                var user = _userRepository.GetByEmail(email);
+                var user = await _userRepository.GetByEmail(email);
                 if (user is not null)
                 {
                     return await _repository.Update(user.Id, new User()
